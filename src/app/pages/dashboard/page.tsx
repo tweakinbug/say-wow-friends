@@ -17,6 +17,7 @@ import {
   Mail,
   LinkIcon,
   X,
+  TwitterIcon,
   Menu,
   History,
   LogOut,
@@ -27,13 +28,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAccount, useConnect, useDisconnect, useWriteContract } from "wagmi";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { uid } from "uid";
-import { parseUnits, parseAbi, parseGwei } from 'viem';
-import {
-  db,
-  doc,
-  setDoc,
-  serverTimestamp,
-} from "@/config/FirebaseConfig";
+import { parseUnits, parseAbi, parseGwei } from "viem";
+import { db, doc, setDoc, serverTimestamp } from "@/config/FirebaseConfig";
 
 const tokenOptions = [
   {
@@ -95,9 +91,8 @@ const wow_abi = [
   "function UserDeposit(uint256 _amount) external returns(bool)",
 ];
 
-
-const mock_usdc = [ 
-  "function approve(address spender, uint256 amount) external returns (bool)"
+const mock_usdc = [
+  "function approve(address spender, uint256 amount) external returns (bool)",
 ];
 
 const WOW_CONTRACT_PARSE_ABI = parseAbi(wow_abi);
@@ -127,7 +122,9 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { disconnect } = useDisconnect();
   const [giftIdForLink, setGiftIdForLink] = useState(null);
-  const explorer = "https://explorer.sepolia.linea.build/"
+  const [verificationTwitterHandle, setVerificationTwitterHandle] =
+    useState("");
+  const explorer = "https://explorer.sepolia.linea.build/";
   const {
     writeContract: approveContract,
     isSuccess: approveSuccess,
@@ -203,6 +200,7 @@ export default function Home() {
       generatedLink: generatedLinkUrl,
       createdAt: serverTimestamp(),
       status: "created",
+      verificationTwitterHandle: verificationTwitterHandle,
     };
 
     if (giftType === "token") {
@@ -261,8 +259,8 @@ export default function Home() {
       await approveContract({
         address: MOCK_USDC_CONTRACT_ADDRESS,
         abi: MOCK_USDC_CONTRACT_PARSE_ABI,
-        functionName: 'approve',
-        args: [WOW_CONTRACT_ADDRESS, parseUnits(amountToApprove || '0', 6)],
+        functionName: "approve",
+        args: [WOW_CONTRACT_ADDRESS, parseUnits(amountToApprove || "0", 6)],
         chainId: 59141,
       });
     } catch (error) {
@@ -277,11 +275,11 @@ export default function Home() {
       await depositContract({
         address: WOW_CONTRACT_ADDRESS,
         abi: WOW_CONTRACT_PARSE_ABI,
-        functionName: 'UserDeposit',
-        args: [parseUnits(amountToDeposit || '0', 6)],
-        chainId: 59141, 
+        functionName: "UserDeposit",
+        args: [parseUnits(amountToDeposit || "0", 6)],
+        chainId: 59141,
         gas: BigInt(150000),
-        maxFeePerGas: parseGwei('20'),
+        maxFeePerGas: parseGwei("20"),
       });
     } catch (error) {
       console.error("Error during token deposit:", error);
@@ -303,7 +301,9 @@ export default function Home() {
       await DepositToken(amount);
     } catch (depositError) {
       console.error("Deposit failed after approval:", depositError);
-      alert(`Deposit failed: ${depositError.message || 'Unknown deposit error'}`);
+      alert(
+        `Deposit failed: ${depositError.message || "Unknown deposit error"}`
+      );
       setIsSubmitting(false);
       resetApprove();
       resetDeposit();
@@ -333,25 +333,45 @@ export default function Home() {
     }
     if (approveError) {
       console.error("Approve Error:", approveWriteError);
-      alert(`Token approval failed: ${approveWriteError?.message || 'Unknown error'}`);
+      alert(
+        `Token approval failed: ${
+          approveWriteError?.message || "Unknown error"
+        }`
+      );
       setIsSubmitting(false);
       resetApprove();
     }
-  }, [approveSuccess, approveError, approveWriteError, resetApprove, giftIdForLink]);
+  }, [
+    approveSuccess,
+    approveError,
+    approveWriteError,
+    resetApprove,
+    giftIdForLink,
+  ]);
 
   useEffect(() => {
     if (depositSuccess) {
-      console.log(`${explorer}tx/${depositData}`)
+      console.log(`${explorer}tx/${depositData}`);
       handleDepositSuccess();
       resetDeposit();
     }
     if (depositError) {
       console.error("Deposit Error:", depositWriteError);
-      alert(`Token deposit failed: ${depositWriteError?.message || 'Unknown deposit error'}`);
+      alert(
+        `Token deposit failed: ${
+          depositWriteError?.message || "Unknown deposit error"
+        }`
+      );
       setIsSubmitting(false);
       resetDeposit();
     }
-  }, [depositSuccess, depositError, depositWriteError, resetDeposit, giftIdForLink]);
+  }, [
+    depositSuccess,
+    depositError,
+    depositWriteError,
+    resetDeposit,
+    giftIdForLink,
+  ]);
 
   const copyLink = () => {
     navigator.clipboard.writeText(generatedLink);
@@ -407,7 +427,7 @@ export default function Home() {
 
     try {
       if (deliveryMethod === "link" || deliveryMethod === "email") {
-         await ApproveToken(amount);
+        await ApproveToken(amount);
       } else {
         console.warn("Delivery method not handled:", deliveryMethod);
         setIsSubmitting(false);
@@ -428,7 +448,7 @@ export default function Home() {
         try {
           await saveGiftDetails(giftIdForLink, generatedLink);
           if (deliveryMethod === "email") {
-             await sendEmail(giftIdForLink);
+            await sendEmail(giftIdForLink);
           }
           setIsSubmitting(false);
         } catch (saveError) {
@@ -959,6 +979,29 @@ export default function Home() {
                             <p className="text-gray-700">{generatedMessage}</p>
                           </div>
                         )}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Verification Twitter Handle
+                          </label>
+                          <div className="relative">
+                            <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                              <TwitterIcon className="h-5 w-5 text-gray-500" />
+                            </div>
+                            <input
+                              type="text"
+                              value={verificationTwitterHandle}
+                              onChange={(e) =>
+                                setVerificationTwitterHandle(e.target.value)
+                              }
+                              className="w-full pl-10 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                              placeholder="Twitter handle (for verification, e.g., @friend)"
+                            />
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            This Twitter handle will be used to verify the
+                            recipient when claiming the gift.
+                          </p>
+                        </div>
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1245,10 +1288,18 @@ export default function Home() {
                         <button
                           onClick={handleSubmit}
                           disabled={
-                            isSubmitting || !walletConnected || generatedLink || approveLoading || depositLoading
+                            isSubmitting ||
+                            !walletConnected ||
+                            generatedLink ||
+                            approveLoading ||
+                            depositLoading
                           }
                           className={`px-6 py-3 rounded-lg flex items-center ${
-                            isSubmitting || !walletConnected || generatedLink || approveLoading || depositLoading
+                            isSubmitting ||
+                            !walletConnected ||
+                            generatedLink ||
+                            approveLoading ||
+                            depositLoading
                               ? "bg-gray-400 text-gray-700 cursor-not-allowed"
                               : "bg-purple-600 hover:bg-purple-700 text-white"
                           }`}

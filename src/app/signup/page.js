@@ -16,7 +16,7 @@ import {
 import { db, doc, setDoc } from "@/config/FirebaseConfig";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
-import { ethers } from 'ethers';
+import { ethers } from "ethers";
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -105,12 +105,14 @@ export default function SignupPage() {
       setIsSubmitting(true);
 
       try {
-        const nonce = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15); // Simple client-side nonce - replace with server-side in production
+        const nonce =
+          Math.random().toString(36).substring(2, 15) +
+          Math.random().toString(36).substring(2, 15);
 
         const messageToSign = `Sign in to Your Crypto Gifts App.\n\nWallet address: ${walletAddress}\nNonce: ${nonce}`;
 
         const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner(walletAddress); 
+        const signer = await provider.getSigner(walletAddress);
 
         let signature;
         try {
@@ -118,19 +120,29 @@ export default function SignupPage() {
         } catch (signError) {
           console.error("Signature request rejected or failed:", signError);
           setIsSubmitting(false);
-          setSubmissionError("Signature request failed. Please try again and ensure MetaMask is connected and you approve the signature request.");
+          setSubmissionError(
+            "Signature request failed. Please try again and ensure MetaMask is connected and you approve the signature request."
+          );
           return;
         }
 
         try {
-          const verifiedAddress = ethers.verifyMessage(messageToSign, signature);
+          const verifiedAddress = ethers.verifyMessage(
+            messageToSign,
+            signature
+          );
           if (verifiedAddress.toLowerCase() !== walletAddress.toLowerCase()) {
             console.error("Signature verification failed: Address mismatch.");
             setIsSubmitting(false);
-            setSubmissionError("Signature verification failed. Please try again.");
+            setSubmissionError(
+              "Signature verification failed. Please try again."
+            );
             return;
           }
-          console.log("Signature Verified! User authenticated for address:", verifiedAddress);
+          console.log(
+            "Signature Verified! User authenticated for address:",
+            verifiedAddress
+          );
 
           const userDocRef = doc(db, "users", walletAddress);
           await setDoc(userDocRef, {
@@ -151,14 +163,13 @@ export default function SignupPage() {
               origin: { y: 0.6 },
             });
           }
-
         } catch (verificationError) {
           console.error("Signature verification error:", verificationError);
           setIsSubmitting(false);
-          setSubmissionError("Signature verification failed. Please try again.");
+          setSubmissionError(
+            "Signature verification failed. Please try again."
+          );
         }
-
-
       } catch (error) {
         console.error("Firebase signup error:", error);
         setIsSubmitting(false);
@@ -414,9 +425,7 @@ export default function SignupPage() {
                         delay: 0.5,
                       }}
                       className="absolute inset-0"
-                    >
-                      <Sparkles className="h-16 w-16 text-yellow-400" />
-                    </motion.div>
+                    ></motion.div>
                   </div>
                 </motion.div>
 
@@ -433,7 +442,8 @@ export default function SignupPage() {
                   className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg font-medium"
                   onClick={
                     //do better
-                    () => router.push("pages/dashboard")}
+                    () => router.push("pages/dashboard")
+                  }
                 >
                   Get Started
                 </motion.button>

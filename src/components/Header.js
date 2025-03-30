@@ -12,7 +12,7 @@ import {
 } from "wagmi";
 import { Wallet, Network, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { db, doc, getDoc } from "../config/FirebaseConfig"
+import { db, doc, getDoc } from "../config/FirebaseConfig";
 import { useRouter } from "next/navigation";
 
 const Header = () => {
@@ -42,7 +42,7 @@ const Header = () => {
   };
 
   const checkUserExists = useCallback(async (walletAddress) => {
-    if (!walletAddress) return false; // Add a check for null address
+    if (!walletAddress) return false;
 
     try {
       const userDocRef = doc(db, "users", walletAddress);
@@ -81,7 +81,6 @@ const Header = () => {
     setIsDropdownOpen(false);
   };
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -107,7 +106,6 @@ const Header = () => {
           <ul className="hidden md:flex space-x-6">
             <li>
               {!isConnected ? (
-                // Render ONE "Get Started" button when not connected (Desktop)
                 <button
                   onClick={handleConnect}
                   className="text-black bg-primary hover:bg-primary-accent px-8 py-3 rounded-full transition-colors"
@@ -116,7 +114,6 @@ const Header = () => {
                   {isPending ? "Connecting..." : "Get Started"}
                 </button>
               ) : (
-                // Render connected wallet info when connected (Desktop)
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={toggleDropdown}
@@ -177,7 +174,6 @@ const Header = () => {
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center">
             {!isConnected ? (
-              // Render ONE "Get Started" button for mobile when not connected
               <button
                 onClick={handleConnect}
                 className="text-black bg-primary hover:bg-primary-accent px-8 py-3 rounded-full transition-colors"
