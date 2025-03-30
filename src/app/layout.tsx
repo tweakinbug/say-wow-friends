@@ -47,9 +47,10 @@ export default function RootLayout({
         {siteDetails.googleAnalyticsId && (
           <GoogleAnalytics gaId={siteDetails.googleAnalyticsId} />
         )}
-
         <main>
-          <Providers>{children}</Providers>
+          <Providers>
+            {children}
+          </Providers>
         </main>
       </body>
     </html>

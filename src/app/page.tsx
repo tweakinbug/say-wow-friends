@@ -6,6 +6,8 @@ import CTA from "@/components/CTA";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
+
+
 const HomePage: React.FC = () => {
   return (
     <>
@@ -14,7 +16,6 @@ const HomePage: React.FC = () => {
       <Logos />
       <Container>
         <Benefits />
-
         <CTA />
       </Container>
       <Footer />

@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Gift, Sparkles, Check, ArrowRight } from "lucide-react";
 import confetti from "canvas-confetti";
-import { db, doc, getDoc, updateDoc } from "@/config/firebaseconfig";
 import { useSearchParams } from "next/navigation";
+import { db, doc, getDoc, updateDoc } from "@/config/FirebaseConfig";
 
 export default function BirthdayGiftPage() {
   const searchParams = useSearchParams();

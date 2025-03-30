@@ -12,7 +12,7 @@ import {
 } from "wagmi";
 import { Wallet, Network, LogOut } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { db, doc, getDoc } from "@/config/firebaseconfig";
+import { db, doc, getDoc } from "../config/FirebaseConfig"
 import { useRouter } from "next/navigation";
 
 const Header = () => {

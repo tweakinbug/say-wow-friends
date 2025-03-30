@@ -24,16 +24,16 @@ import {
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useWriteContract } from "wagmi";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { uid } from "uid";
+import { parseUnits, parseAbi, parseGwei } from 'viem';
 import {
   db,
   doc,
   setDoc,
-  getDoc,
   serverTimestamp,
-} from "@/config/firebaseconfig";
+} from "@/config/FirebaseConfig";
 
 const tokenOptions = [
   {
@@ -82,13 +82,26 @@ const nftOptions = [
   },
 ];
 
-// Theme options
 const themeOptions = [
   { name: "Birthday", image: "/images/candles.svg" },
   { name: "Anniversary", image: "/images/ann.svg" },
   { name: "Celebration", image: "/images/festive.svg" },
   { name: "Holiday", image: "/images/holiday.svg" },
 ];
+
+const WOW_CONTRACT_ADDRESS = "0xE2ba9ba6EF11e1e046a337000Da77b0013d9A6F8";
+const MOCK_USDC_CONTRACT_ADDRESS = "0x072BA244Cf0DE5984dEB40030Aef86d7661303dC";
+const wow_abi = [
+  "function UserDeposit(uint256 _amount) external returns(bool)",
+];
+
+
+const mock_usdc = [ 
+  "function approve(address spender, uint256 amount) external returns (bool)"
+];
+
+const WOW_CONTRACT_PARSE_ABI = parseAbi(wow_abi);
+const MOCK_USDC_CONTRACT_PARSE_ABI = parseAbi(mock_usdc);
 
 export default function Home() {
   const { address, isConnected } = useAccount();
@@ -113,6 +126,26 @@ export default function Home() {
   const confettiRef = useRef(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { disconnect } = useDisconnect();
+  const [giftIdForLink, setGiftIdForLink] = useState(null);
+  const explorer = "https://explorer.sepolia.linea.build/"
+  const {
+    writeContract: approveContract,
+    isSuccess: approveSuccess,
+    isError: approveError,
+    error: approveWriteError,
+    reset: resetApprove,
+    isLoading: approveLoading,
+  } = useWriteContract();
+
+  const {
+    writeContract: depositContract,
+    isSuccess: depositSuccess,
+    isError: depositError,
+    error: depositWriteError,
+    reset: resetDeposit,
+    isLoading: depositLoading,
+    data: depositData,
+  } = useWriteContract();
 
   const connectWallet = async () => {
     if (connectors && connectors.length > 0) {
@@ -223,22 +256,102 @@ export default function Home() {
     }
   };
 
-  // Generate gift link
+  const ApproveToken = async (amountToApprove) => {
+    try {
+      await approveContract({
+        address: MOCK_USDC_CONTRACT_ADDRESS,
+        abi: MOCK_USDC_CONTRACT_PARSE_ABI,
+        functionName: 'approve',
+        args: [WOW_CONTRACT_ADDRESS, parseUnits(amountToApprove || '0', 6)],
+        chainId: 59141,
+      });
+    } catch (error) {
+      console.error("Error during token approval:", error);
+      setIsSubmitting(false);
+      throw error;
+    }
+  };
+
+  const DepositToken = async (amountToDeposit) => {
+    try {
+      await depositContract({
+        address: WOW_CONTRACT_ADDRESS,
+        abi: WOW_CONTRACT_PARSE_ABI,
+        functionName: 'UserDeposit',
+        args: [parseUnits(amountToDeposit || '0', 6)],
+        chainId: 59141, 
+        gas: BigInt(150000),
+        maxFeePerGas: parseGwei('20'),
+      });
+    } catch (error) {
+      console.error("Error during token deposit:", error);
+      setIsSubmitting(false);
+      throw error;
+    }
+  };
+
   const generateLink = (giftId) => {
     const baseUrl = window.location.origin;
     const newLink = `${baseUrl}/gifts/${selectedTheme.name.toLowerCase()}?id=${giftId}`;
-    setGeneratedLink(newLink);
-
-    // Trigger confetti
-    if (confettiRef.current) {
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-      });
-    }
     return newLink;
   };
+
+  const handleApproveSuccess = async () => {
+    console.log("Token Approved successfully, now depositing...");
+    setIsSubmitting(true);
+    try {
+      await DepositToken(amount);
+    } catch (depositError) {
+      console.error("Deposit failed after approval:", depositError);
+      alert(`Deposit failed: ${depositError.message || 'Unknown deposit error'}`);
+      setIsSubmitting(false);
+      resetApprove();
+      resetDeposit();
+    }
+  };
+
+  const handleDepositSuccess = async () => {
+    if (giftIdForLink) {
+      const newLink = generateLink(giftIdForLink);
+      setGeneratedLink(newLink);
+
+      if (confettiRef.current) {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+        });
+      }
+      setIsSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (approveSuccess) {
+      handleApproveSuccess();
+      resetApprove();
+    }
+    if (approveError) {
+      console.error("Approve Error:", approveWriteError);
+      alert(`Token approval failed: ${approveWriteError?.message || 'Unknown error'}`);
+      setIsSubmitting(false);
+      resetApprove();
+    }
+  }, [approveSuccess, approveError, approveWriteError, resetApprove, giftIdForLink]);
+
+  useEffect(() => {
+    if (depositSuccess) {
+      console.log(`${explorer}tx/${depositData}`)
+      handleDepositSuccess();
+      resetDeposit();
+    }
+    if (depositError) {
+      console.error("Deposit Error:", depositWriteError);
+      alert(`Token deposit failed: ${depositWriteError?.message || 'Unknown deposit error'}`);
+      setIsSubmitting(false);
+      resetDeposit();
+    }
+  }, [depositSuccess, depositError, depositWriteError, resetDeposit, giftIdForLink]);
 
   const copyLink = () => {
     navigator.clipboard.writeText(generatedLink);
@@ -286,34 +399,48 @@ export default function Home() {
 
     setIsSubmitting(true);
     setLinkCopied(false);
+    setGeneratedLink("");
+    setGiftIdForLink(null);
 
-    const giftId = uid(25);
-    let generatedLinkUrl = "";
+    const newGiftId = uid(25);
+    setGiftIdForLink(newGiftId);
 
     try {
-      if (deliveryMethod === "link") {
-        generatedLinkUrl = generateLink(giftId);
+      if (deliveryMethod === "link" || deliveryMethod === "email") {
+         await ApproveToken(amount);
       } else {
-        if (!recipientEmail || !/\S+@\S+\.\S+/.test(recipientEmail)) {
-          alert("Please enter a valid recipient email address.");
-          setIsSubmitting(false);
-          return;
-        }
-        generatedLinkUrl = await sendEmail(giftId);
-      }
-      if (generatedLinkUrl) {
-        await saveGiftDetails(giftId, generatedLinkUrl);
-      } else {
-        throw new Error("Failed to generate gift link.");
+        console.warn("Delivery method not handled:", deliveryMethod);
+        setIsSubmitting(false);
+        return;
       }
     } catch (error) {
-      console.error("Submission failed:", error);
-      alert(`Failed to create gift. ${error.message}`);
+      console.error("Submission failed (Approve Token):", error);
+      alert(`Failed to initiate gift creation: ${error.message}`);
       setGeneratedLink("");
-    } finally {
       setIsSubmitting(false);
+      setGiftIdForLink(null);
     }
   };
+
+  useEffect(() => {
+    if (generatedLink && giftIdForLink) {
+      const saveLinkAndDetails = async () => {
+        try {
+          await saveGiftDetails(giftIdForLink, generatedLink);
+          if (deliveryMethod === "email") {
+             await sendEmail(giftIdForLink);
+          }
+          setIsSubmitting(false);
+        } catch (saveError) {
+          console.error("Error saving gift details:", saveError);
+          alert(`Error saving gift details: ${saveError.message}`);
+          setIsSubmitting(false);
+        }
+      };
+      saveLinkAndDetails();
+    }
+  }, [generatedLink, giftIdForLink, deliveryMethod]);
+
   const nextStep = () => {
     setCurrentStep(currentStep + 1);
   };
@@ -1118,15 +1245,15 @@ export default function Home() {
                         <button
                           onClick={handleSubmit}
                           disabled={
-                            isSubmitting || !walletConnected || generatedLink
+                            isSubmitting || !walletConnected || generatedLink || approveLoading || depositLoading
                           }
                           className={`px-6 py-3 rounded-lg flex items-center ${
-                            isSubmitting || !walletConnected || generatedLink
+                            isSubmitting || !walletConnected || generatedLink || approveLoading || depositLoading
                               ? "bg-gray-400 text-gray-700 cursor-not-allowed"
                               : "bg-purple-600 hover:bg-purple-700 text-white"
                           }`}
                         >
-                          {isSubmitting ? (
+                          {isSubmitting || approveLoading || depositLoading ? (
                             <>
                               <svg
                                 className="animate-spin -ml-1 mr-2 h-4 w-4"

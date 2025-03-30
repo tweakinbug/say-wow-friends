@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Gift, Sparkles, Check, ArrowRight } from "lucide-react";
 import confetti from "canvas-confetti";
-import { db, doc, getDoc, updateDoc } from "@/config/firebaseconfig";
+import { db, doc, getDoc, updateDoc } from "@/config/FirebaseConfig";
 import { useSearchParams } from "next/navigation";
 
 export default function CelebrationGiftPage() {

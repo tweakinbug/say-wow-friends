@@ -5,7 +5,7 @@ import { http, WagmiProvider, createConfig } from "wagmi";
 import { mainnet, linea, lineaSepolia } from "wagmi/chains";
 import { metaMask } from "wagmi/connectors";
 
-const config = createConfig({
+export const config = createConfig({
   ssr: true,
   chains: [mainnet, linea, lineaSepolia],
   connectors: [metaMask()],

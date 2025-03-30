@@ -13,9 +13,10 @@ import {
   Sparkles,
   PartyPopper,
 } from "lucide-react";
-import { db, doc, setDoc } from "@/config/firebaseconfig";
+import { db, doc, setDoc } from "@/config/FirebaseConfig";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
+import { ethers } from 'ethers';
 
 export default function SignupPage() {
   const [email, setEmail] = useState("");
@@ -104,25 +105,60 @@ export default function SignupPage() {
       setIsSubmitting(true);
 
       try {
-        const userDocRef = doc(db, "users", walletAddress);
-        await setDoc(userDocRef, {
-          email: email,
-          username: username,
-          birthday: birthday,
-          twitter: twitter,
-          createdAt: new Date(),
-        });
+        const nonce = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15); // Simple client-side nonce - replace with server-side in production
 
-        setIsSubmitting(false);
-        setIsSubmitted(true);
+        const messageToSign = `Sign in to Your Crypto Gifts App.\n\nWallet address: ${walletAddress}\nNonce: ${nonce}`;
 
-        if (confettiRef.current) {
-          confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 },
-          });
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner(walletAddress); 
+
+        let signature;
+        try {
+          signature = await signer.signMessage(messageToSign);
+        } catch (signError) {
+          console.error("Signature request rejected or failed:", signError);
+          setIsSubmitting(false);
+          setSubmissionError("Signature request failed. Please try again and ensure MetaMask is connected and you approve the signature request.");
+          return;
         }
+
+        try {
+          const verifiedAddress = ethers.verifyMessage(messageToSign, signature);
+          if (verifiedAddress.toLowerCase() !== walletAddress.toLowerCase()) {
+            console.error("Signature verification failed: Address mismatch.");
+            setIsSubmitting(false);
+            setSubmissionError("Signature verification failed. Please try again.");
+            return;
+          }
+          console.log("Signature Verified! User authenticated for address:", verifiedAddress);
+
+          const userDocRef = doc(db, "users", walletAddress);
+          await setDoc(userDocRef, {
+            email: email,
+            username: username,
+            birthday: birthday,
+            twitter: twitter,
+            createdAt: new Date(),
+          });
+
+          setIsSubmitting(false);
+          setIsSubmitted(true);
+
+          if (confettiRef.current) {
+            confetti({
+              particleCount: 100,
+              spread: 70,
+              origin: { y: 0.6 },
+            });
+          }
+
+        } catch (verificationError) {
+          console.error("Signature verification error:", verificationError);
+          setIsSubmitting(false);
+          setSubmissionError("Signature verification failed. Please try again.");
+        }
+
+
       } catch (error) {
         console.error("Firebase signup error:", error);
         setIsSubmitting(false);
@@ -395,7 +431,9 @@ export default function SignupPage() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg font-medium"
-                  onClick={() => router.push("/dashboard")}
+                  onClick={
+                    //do better
+                    () => router.push("pages/dashboard")}
                 >
                   Get Started
                 </motion.button>

@@ -8,7 +8,7 @@ import {
   query,
   orderBy,
   getDocs,
-} from "@/config/firebaseconfig";
+} from "@/config/FirebaseConfig";
 import {
   History,
   Loader2,
