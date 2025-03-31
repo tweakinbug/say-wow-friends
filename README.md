@@ -1,38 +1,48 @@
-# say WOW!
+<!-- Main image -->
+<img src="public/say-wow-images/wowinit.png" alt="say wow" style="max-width: 100%; width: 300px; height: auto;">
 
-![say wow](public/say-wow-images/wowinit.png)
+<p>say WOW! is a platform where users can send onchain gifts to their families and friends via their Twitter username while keeping their account transactions private (no snooping around to check my wallet balance);</p>
 
-say WOW! is a platform where users can send onchain gifts to their families and friends via their Twitter username while keeping their account transactions private (no snooping around to check my wallet balance);
-
-```js
+<pre><code class="language-js">
 //contracts address
 SAY_WOW = "0xE2ba9ba6EF11e1e046a337000Da77b0013d9A6F8" ;
 SAY_WOW_USDC="0x072BA244Cf0DE5984dEB40030Aef86d7661303dC";
+</code></pre>
 
-```
+<h2>How to use say WOW! to send onchain gifts:</h2>
 
-## How to use say WOW! to send onchain gifts:
+<ol>
+  <li>Sign in <a href="https://say-wow.vercel.app/">say wow</a></li>
+  <li>Select the type of gift you want to send.
+    <br>
+    <img src="public/say-wow-images/image1.png" alt="say wow step 1" style="max-width: 100%; width: 300px; height: auto;">
+  </li>
+  <li>Enter a message you want to send to your loved ones.
+    <br>
+    <img src="public/say-wow-images/image2.png" alt="say wow step 2" style="max-width: 100%; width: 300px; height: auto;">
+  </li>
+  <li>Enter their Twitter username.</li>
+  <li>Deposit the gift you want to send to them (USDC for now).</li>
+  <li>Once the gift deposit is successful, a unique link is generated for them to claim their gift.
+    <br>
+    <img src="public/say-wow-images/image3.png" alt="say wow step 3" style="max-width: 100%; width: 300px; height: auto;">
+  </li>
+</ol>
 
-1. Sign in [say wow](https://say-wow.vercel.app/)
-2. Select the type of gift you want to send.
-![say wow](public/say-wow-images/image1.png)
-3. Enter a message you want to send to your loved ones.
-![say wow](public/say-wow-images/image2.png)
-4. Enter their Twitter username.
-5. After that, Deposit the gift you want to send to them (USDC for now).
-6. Once the gift deposit is Successful, a unique link is generated for them to claim their gift.
+<h2>How to claim your gift as a receiver:</h2>
 
-![say wow](public/say-wow-images/image3.png)
-
-## How to claim your gift as a receiver:
-
-
-![say wow](public/say-wow-images/image4.png)
-1. Connect twitter account to verify your identity.
-
-![say wow](public/say-wow-images/image5.png)
-2. After verification, connect wallet.
-![say wow](public/say-wow-images/image6.png)
-
-3. once you connect your wallet, you can claim your gift and say WOW :)
-![say wow](public/say-wow-images/image7.png)
+<img src="public/say-wow-images/image4.png" alt="say wow claim step 1" style="max-width: 100%; width: 300px; height: auto;">
+<ol>
+  <li>Connect your Twitter account to verify your identity.
+    <br>
+    <img src="public/say-wow-images/image5.png" alt="say wow claim step 2" style="max-width: 100%; width: 300px; height: auto;">
+  </li>
+  <li>After verification, connect your wallet.
+    <br>
+    <img src="public/say-wow-images/image6.png" alt="say wow claim step 3" style="max-width: 100%; width: 300px; height: auto;">
+  </li>
+  <li>Once you connect your wallet, you can claim your gift and say WOW :)
+    <br>
+    <img src="public/say-wow-images/image7.png" alt="say wow claim step 4" style="max-width: 100%; width: 300px; height: auto;">
+  </li>
+</ol>
