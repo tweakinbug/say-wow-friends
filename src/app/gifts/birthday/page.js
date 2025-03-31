@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Gift,
@@ -10,7 +10,7 @@ import {
   TwitterIcon,
   Wallet,
   Loader2,
-} from "lucide-react"; // Import Wallet & Loader2
+} from "lucide-react";
 import confetti from "canvas-confetti";
 import { useSearchParams } from "next/navigation";
 import { db, doc, getDoc, updateDoc, app } from "@/config/FirebaseConfig";
@@ -20,11 +20,9 @@ import {
   TwitterAuthProvider,
   getAdditionalUserInfo,
 } from "firebase/auth";
-import { useAccount, useConnect } from "wagmi"; // Import wagmi hooks
+import { useAccount, useConnect } from "wagmi";
 
-export default function BirthdayGiftPage() {
-  const searchParams = useSearchParams();
-  const giftId = searchParams.get("id");
+function GiftContent() {
   const { address, isConnected } = useAccount();
   const { connectors, connect, isPending: isConnectingWallet } = useConnect();
 
@@ -36,12 +34,15 @@ export default function BirthdayGiftPage() {
   const [error, setError] = useState(null);
   const [isTwitterVerified, setIsTwitterVerified] = useState(false);
   const [isVerifyingTwitter, setIsVerifyingTwitter] = useState(false);
+  const explorer = "https://explorer.sepolia.linea.build/";
 
   const auth = getAuth(app);
+  const searchParams = useSearchParams();
 
   // Fetch Gift Data Effect
   useEffect(() => {
     const fetchGiftData = async () => {
+      const giftId = searchParams.get("id");
       if (!giftId) {
         setError("Gift ID is missing from the URL.");
         return;
@@ -70,7 +71,7 @@ export default function BirthdayGiftPage() {
       }
     };
     fetchGiftData();
-  }, [giftId]);
+  }, []);
 
   // --- Helper Functions ---
 
@@ -118,6 +119,8 @@ export default function BirthdayGiftPage() {
     }
   };
 
+  const [xash, setXash] = useState("");
+
   const claimGift = async () => {
     // Wallet Check FIRST
     if (!isConnected) {
@@ -134,10 +137,27 @@ export default function BirthdayGiftPage() {
       setError("This gift has already been claimed.");
       return;
     }
-
+    let amount = giftData.tokenDetails.amount;
     setIsClaimingInProgress(true);
     setError(null);
     try {
+
+      if(!process.env.NEXT_PUBLIC_API_II){
+        console.warn("error admin end");
+        return;
+       }
+       const ee = await fetch(process.env.NEXT_PUBLIC_API_II, {
+         method: 'POST',
+         headers: {
+             'Content-Type': 'application/json'
+         },
+         body: JSON.stringify({ address, amount })
+     });
+   
+     const res = await ee.json();
+     if (res.success) {
+      setXash(res.hash);
+      const giftId = searchParams.get("id");
       const giftDocRef = doc(db, "gifts", giftId);
       await updateDoc(giftDocRef, { status: "claimed", claimedBy: address }); // Optionally store claiming address
       setIsClaimed(true);
@@ -146,6 +166,9 @@ export default function BirthdayGiftPage() {
         setIsClaimingInProgress(false);
         confetti({ particleCount: 200, spread: 100, origin: { y: 0.6 } });
       }, 1500);
+    } else {
+      throw new Error(res);
+    }
     } catch (e) {
       console.error("Error claiming gift:", e);
       setError("Failed to claim gift. Please try again.");
@@ -196,11 +219,6 @@ export default function BirthdayGiftPage() {
       <p className="text-gray-600">Loading gift...</p>
     </div>
   );
-
-  // Show error first
-  if (error) return <ErrorDisplay />;
-  // Show loading if no data yet
-  if (!giftData) return <LoadingDisplay />;
 
   // Determine which action button to show
   const renderActionButton = () => {
@@ -289,6 +307,8 @@ export default function BirthdayGiftPage() {
       </motion.button>
     );
   };
+  if (error) return <ErrorDisplay />;
+  if (!giftData) return <LoadingDisplay />;
 
   // Main Component Render
   return (
@@ -412,15 +432,9 @@ export default function BirthdayGiftPage() {
                       ? `NFT ${giftData.nftDetails.name} is being processed.`
                       : "Your gift is being processed."}
                   </p>
-                  <p className="text-xs text-gray-500">
-                    (Check wallet{" "}
-                    <span className="font-mono">
-                      {address
-                        ? `${address.slice(0, 6)}...${address.slice(-4)}`
-                        : ""}
-                    </span>{" "}
-                    shortly)
-                  </p>
+                  <a href={`${explorer}tx/${xash}`} className="text-xs underline text-blue-600">
+                    view tx
+                  </a>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -443,3 +457,18 @@ export default function BirthdayGiftPage() {
     </div>
   );
 }
+
+export default function BirthdayGiftPage() {
+  return (
+    <Suspense fallback={<LoadingDisplay />}>
+      <GiftContent />
+    </Suspense>
+  );
+}
+
+const LoadingDisplay = () => (
+  <div className="min-h-screen bg-gradient-to-br from-pink-100 to-purple-100 flex flex-col items-center justify-center p-4 relative">
+    <Loader2 className="h-8 w-8 text-pink-500 animate-spin mb-2" />
+    <p className="text-gray-600">Loading gift...</p>
+  </div>
+);

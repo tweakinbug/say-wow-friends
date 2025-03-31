@@ -1,7 +1,6 @@
-// recipient-end/GeneralGiftPage.js
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Gift,
@@ -23,10 +22,7 @@ import {
 } from "firebase/auth";
 import { useAccount, useConnect } from "wagmi";
 
-export default function GeneralGiftPage() {
-  const searchParams = useSearchParams();
-  const giftId = searchParams.get("id");
-
+function GiftContent() {
   // Wagmi Hooks
   const { address, isConnected } = useAccount();
   const { connectors, connect, isPending: isConnectingWallet } = useConnect();
@@ -39,11 +35,13 @@ export default function GeneralGiftPage() {
   const [error, setError] = useState(null);
   const [isTwitterVerified, setIsTwitterVerified] = useState(false); // Added
   const [isVerifyingTwitter, setIsVerifyingTwitter] = useState(false); // Added
-
+  const explorer = "https://explorer.sepolia.linea.build/";
   const auth = getAuth(app); // Added
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const fetchGiftData = async () => {
+      const giftId = searchParams.get("id");
       if (!giftId) {
         setError("Gift ID is missing from the URL.");
         return;
@@ -72,7 +70,7 @@ export default function GeneralGiftPage() {
       }
     };
     fetchGiftData();
-  }, [giftId]);
+  }, []);
 
   // --- Helper Functions ---
 
@@ -123,7 +121,7 @@ export default function GeneralGiftPage() {
       setIsVerifyingTwitter(false);
     }
   };
-
+  const [xash, setXash] = useState("");
   const claimGift = async () => {
     if (!isConnected) {
       setError("Please connect your wallet to claim the gift.");
@@ -137,10 +135,26 @@ export default function GeneralGiftPage() {
       setError("This gift has already been claimed.");
       return;
     }
-
+    let amount = giftData.tokenDetails.amount;
     setIsClaimingInProgress(true);
     setError(null);
     try {
+      if(!process.env.NEXT_PUBLIC_API_II){
+        console.warn("error admin end");
+        return;
+       }
+       const ee = await fetch(process.env.NEXT_PUBLIC_API_II, {
+         method: 'POST',
+         headers: {
+          'Content-Type': 'application/json'
+         },
+         body: JSON.stringify({ address, amount })
+     });
+   
+     const res = await ee.json();
+     if (res.success) {
+      setXash(res.hash);
+      const giftId = searchParams.get("id");
       const giftDocRef = doc(db, "gifts", giftId);
       await updateDoc(giftDocRef, { status: "claimed", claimedBy: address });
       setIsClaimed(true);
@@ -153,7 +167,10 @@ export default function GeneralGiftPage() {
           origin: { y: 0.6 },
           // Use default confetti colors
         });
-      }, 1500);
+      }, 1500); 
+    } else {
+        throw new Error(res);
+      }
     } catch (e) {
       console.error("Error claiming gift:", e);
       setError("Failed to claim gift. Please try again.");
@@ -202,9 +219,6 @@ export default function GeneralGiftPage() {
       <p className="text-gray-600">Loading gift...</p>
     </div>
   );
-
-  if (error) return <ErrorDisplay />;
-  if (!giftData) return <LoadingDisplay />;
 
   const renderActionButton = () => {
     if (giftData.verificationTwitterHandle && !isTwitterVerified) {
@@ -430,15 +444,10 @@ export default function GeneralGiftPage() {
                       ? `NFT ${giftData.nftDetails.name} is being processed.`
                       : "Your gift is being processed."}
                   </p>
-                  <p className="text-xs text-gray-500">
-                    (Check wallet{" "}
-                    <span className="font-mono">
-                      {address
-                        ? `${address.slice(0, 6)}...${address.slice(-4)}`
-                        : ""}
-                    </span>{" "}
-                    shortly)
-                  </p>
+                  <a href={`${explorer}tx/${xash}`} className="text-xs underline text-blue-600">
+                    view tx
+                  </a>
+
                 </motion.div>
               )}
             </AnimatePresence>
@@ -454,3 +463,18 @@ export default function GeneralGiftPage() {
     </div>
   );
 }
+
+export default function GeneralGiftPage() {
+  return (
+    <Suspense fallback={<LoadingDisplay />}>
+      <GiftContent />
+    </Suspense>
+  );
+}
+
+const LoadingDisplay = () => (
+  <div className="min-h-screen bg-gradient-to-br from-indigo-100 to-blue-100 flex flex-col items-center justify-center p-4 relative">
+    <Loader2 className="h-8 w-8 text-indigo-500 animate-spin mb-2" />
+    <p className="text-gray-600">Loading gift...</p>
+  </div>
+);

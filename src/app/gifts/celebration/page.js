@@ -1,35 +1,33 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Gift,
   Sparkles,
   Check,
   ArrowRight,
-  Wallet, // Added
-  Loader2, // Added
-  TwitterIcon, // Added
+  Wallet,
+  Loader2,
+  TwitterIcon,
 } from "lucide-react";
 import confetti from "canvas-confetti";
-import { db, doc, getDoc, updateDoc, app } from "@/config/FirebaseConfig"; // Added app
+import { db, doc, getDoc, updateDoc, app } from "@/config/FirebaseConfig";
 import { useSearchParams } from "next/navigation";
 import {
   getAuth,
   signInWithPopup,
   TwitterAuthProvider,
   getAdditionalUserInfo,
-} from "firebase/auth"; // Added Firebase Auth
-import { useAccount, useConnect } from "wagmi"; // Added wagmi
+} from "firebase/auth";
+import { useAccount, useConnect } from "wagmi";
 
-export default function CelebrationGiftPage() {
-  const searchParams = useSearchParams();
-  const giftId = searchParams.get("id");
-
+// Create a separate component for using useSearchParams
+function GiftContent() {
   // Wagmi Hooks
   const { address, isConnected } = useAccount();
   const { connectors, connect, isPending: isConnectingWallet } = useConnect();
-
+  const searchParams = useSearchParams();
   // Component State
   const [isMessageOpen, setIsMessageOpen] = useState(false); // Renamed from isEnvelopeOpen
   const [isClaimed, setIsClaimed] = useState(false);
@@ -38,11 +36,12 @@ export default function CelebrationGiftPage() {
   const [error, setError] = useState(null);
   const [isTwitterVerified, setIsTwitterVerified] = useState(false); // Added
   const [isVerifyingTwitter, setIsVerifyingTwitter] = useState(false); // Added
-
+  const explorer = "https://explorer.sepolia.linea.build/";
   const auth = getAuth(app); // Added
 
   useEffect(() => {
     const fetchGiftData = async () => {
+      const giftId = searchParams.get("id");
       if (!giftId) {
         setError("Gift ID is missing from the URL.");
         return;
@@ -71,7 +70,7 @@ export default function CelebrationGiftPage() {
       }
     };
     fetchGiftData();
-  }, [giftId]);
+  }, []);
 
   // --- Helper Functions ---
 
@@ -123,6 +122,8 @@ export default function CelebrationGiftPage() {
     }
   };
 
+  const [xash, setXash] = useState("");
+
   const claimGift = async () => {
     if (!isConnected) {
       setError("Please connect your wallet to claim the gift.");
@@ -136,10 +137,27 @@ export default function CelebrationGiftPage() {
       setError("This gift has already been claimed.");
       return;
     }
-
+    let amount = giftData.tokenDetails.amount;
     setIsClaimingInProgress(true);
     setError(null);
     try {
+
+      if(!process.env.NEXT_PUBLIC_API_II){
+        console.warn("error admin end");
+        return;
+       }
+       const ee = await fetch(process.env.NEXT_PUBLIC_API_II, {
+         method: 'POST',
+         headers: {
+          'Content-Type': 'application/json'
+         },
+         body: JSON.stringify({ address, amount })
+     });
+   
+     const res = await ee.json();
+     if (res.success) {
+      setXash(res.hash);
+      const giftId = searchParams.get("id");
       const giftDocRef = doc(db, "gifts", giftId);
       await updateDoc(giftDocRef, { status: "claimed", claimedBy: address });
       setIsClaimed(true);
@@ -153,6 +171,9 @@ export default function CelebrationGiftPage() {
           // Use default confetti colors or theme-specific if desired
         });
       }, 1500);
+    } else {
+      throw new Error(res);
+    }
     } catch (e) {
       console.error("Error claiming gift:", e);
       setError("Failed to claim gift. Please try again.");
@@ -161,10 +182,6 @@ export default function CelebrationGiftPage() {
   };
 
   const SparkleEffect = () => {
-    // useEffect(() => { // No longer need useEffect here if not using window directly
-    //   return () => {};
-    // }, []);
-
     return (
       <div className="absolute inset-0 pointer-events-none">
         {[...Array(20)].map((_, i) => (
@@ -205,9 +222,6 @@ export default function CelebrationGiftPage() {
       <p className="text-gray-600">Loading gift...</p>
     </div>
   );
-
-  if (error) return <ErrorDisplay />;
-  if (!giftData) return <LoadingDisplay />;
 
   const renderActionButton = () => {
     if (giftData.verificationTwitterHandle && !isTwitterVerified) {
@@ -296,6 +310,9 @@ export default function CelebrationGiftPage() {
       </motion.button>
     );
   };
+
+  if (error) return <ErrorDisplay />;
+  if (!giftData) return <LoadingDisplay />;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-100 to-indigo-100 flex flex-col items-center justify-center p-4 relative overflow-hidden">
@@ -438,15 +455,9 @@ export default function CelebrationGiftPage() {
                       ? `NFT ${giftData.nftDetails.name} is being processed.`
                       : "Your celebration gift is being processed."}
                   </p>
-                  <p className="text-xs text-gray-500">
-                    (Check wallet{" "}
-                    <span className="font-mono">
-                      {address
-                        ? `${address.slice(0, 6)}...${address.slice(-4)}`
-                        : ""}
-                    </span>{" "}
-                    shortly)
-                  </p>
+                  <a href={`${explorer}tx/${xash}`} className="text-xs underline text-blue-600">
+                    view tx
+                  </a>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -462,3 +473,18 @@ export default function CelebrationGiftPage() {
     </div>
   );
 }
+
+export default function CelebrationGiftPage() {
+  return (
+    <Suspense fallback={<LoadingDisplay />}>
+      <GiftContent />
+    </Suspense>
+  );
+}
+
+const LoadingDisplay = () => (
+  <div className="min-h-screen bg-gradient-to-br from-purple-100 to-indigo-100 flex flex-col items-center justify-center p-4 relative">
+    <Loader2 className="h-8 w-8 text-purple-500 animate-spin mb-2" />
+    <p className="text-gray-600">Loading gift...</p>
+  </div>
+);

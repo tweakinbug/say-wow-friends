@@ -131,6 +131,7 @@ export default function Home() {
     isError: approveError,
     error: approveWriteError,
     reset: resetApprove,
+    //@ts-ignore
     isLoading: approveLoading,
   } = useWriteContract();
 
@@ -140,6 +141,7 @@ export default function Home() {
     isError: depositError,
     error: depositWriteError,
     reset: resetDeposit,
+    //@ts-ignore
     isLoading: depositLoading,
     data: depositData,
   } = useWriteContract();
@@ -170,6 +172,7 @@ export default function Home() {
 
   const generateAIMessage = async () => {
     const genAI = new GoogleGenerativeAI(
+      //@ts-ignore
       process.env.NEXT_PUBLIC_GEMINI_API_KEY
     );
 
@@ -183,6 +186,7 @@ export default function Home() {
     setMessage(result.response.text());
   };
 
+  //@ts-ignore
   const saveGiftDetails = async (giftId, generatedLinkUrl) => {
     if (!walletAddress) {
       console.error("Wallet address is missing, cannot save gift.");
@@ -204,6 +208,7 @@ export default function Home() {
     };
 
     if (giftType === "token") {
+      //@ts-ignore
       giftData.tokenDetails = {
         name: selectedToken.name,
         image: selectedToken.image,
@@ -211,6 +216,7 @@ export default function Home() {
         amount: amount,
       };
     } else {
+      //@ts-ignore
       giftData.nftDetails = {
         name: selectedNFT.name,
         image: selectedNFT.image,
@@ -253,7 +259,7 @@ export default function Home() {
       throw error;
     }
   };
-
+  //@ts-ignore
   const ApproveToken = async (amountToApprove) => {
     try {
       await approveContract({
@@ -269,7 +275,7 @@ export default function Home() {
       throw error;
     }
   };
-
+  //@ts-ignore
   const DepositToken = async (amountToDeposit) => {
     try {
       await depositContract({
@@ -287,7 +293,7 @@ export default function Home() {
       throw error;
     }
   };
-
+  //@ts-ignore
   const generateLink = (giftId) => {
     const baseUrl = window.location.origin;
     const newLink = `${baseUrl}/gifts/${selectedTheme.name.toLowerCase()}?id=${giftId}`;
@@ -301,9 +307,8 @@ export default function Home() {
       await DepositToken(amount);
     } catch (depositError) {
       console.error("Deposit failed after approval:", depositError);
-      alert(
-        `Deposit failed: ${depositError.message || "Unknown deposit error"}`
-      );
+      //@ts-ignore
+      alert(`Deposit failed: ${depositError.message || "Unknown deposit error"}`);
       setIsSubmitting(false);
       resetApprove();
       resetDeposit();
@@ -378,7 +383,7 @@ export default function Home() {
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
   };
-
+  //@ts-ignore
   const sendEmail = async (giftId) => {
     const link = generateLink(giftId);
 
@@ -399,11 +404,13 @@ export default function Home() {
       return link;
     } catch (error) {
       console.error("Error queuing email:", error);
+      //@ts-ignore
       alert(`Error queuing email to ${recipientEmail}: ${error.message}`);
       throw error;
     }
   };
 
+  //@ts-ignore
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -423,6 +430,7 @@ export default function Home() {
     setGiftIdForLink(null);
 
     const newGiftId = uid(25);
+    //@ts-ignore
     setGiftIdForLink(newGiftId);
 
     try {
@@ -435,6 +443,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error("Submission failed (Approve Token):", error);
+      //@ts-ignore
       alert(`Failed to initiate gift creation: ${error.message}`);
       setGeneratedLink("");
       setIsSubmitting(false);
@@ -453,6 +462,7 @@ export default function Home() {
           setIsSubmitting(false);
         } catch (saveError) {
           console.error("Error saving gift details:", saveError);
+          //@ts-ignore
           alert(`Error saving gift details: ${saveError.message}`);
           setIsSubmitting(false);
         }
@@ -553,7 +563,7 @@ export default function Home() {
               </div>
               <div className="p-4 border-t border-gray-200">
                 <button
-                  onClick={disconnect}
+                  onClick={() => disconnect()}
                   className="flex items-center px-3 py-2 text-sm font-medium rounded-lg text-red-600 hover:bg-red-50 w-full"
                 >
                   <LogOut className="mr-3 h-5 w-5" />
@@ -1273,7 +1283,7 @@ export default function Home() {
                             <p className="text-xs text-purple-700 mt-2">
                               Share this link with your recipient to let them
                               claim their gift!
-                            </p>
+                              </p>
                           </motion.div>
                         )}
                       </div>

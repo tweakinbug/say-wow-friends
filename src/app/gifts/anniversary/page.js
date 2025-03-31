@@ -8,39 +8,38 @@ import {
   Check,
   ArrowRight,
   Heart,
-  Wallet, // Added
-  Loader2, // Added
-  TwitterIcon, // Added
+  Wallet,
+  Loader2,
+  TwitterIcon,
 } from "lucide-react";
 import confetti from "canvas-confetti";
-import { db, doc, getDoc, updateDoc, app } from "@/config/FirebaseConfig"; // Added app
+import { db, doc, getDoc, updateDoc, app } from "@/config/FirebaseConfig";
 import { useSearchParams } from "next/navigation";
 import {
   getAuth,
   signInWithPopup,
   TwitterAuthProvider,
   getAdditionalUserInfo,
-} from "firebase/auth"; // Added Firebase Auth
-import { useAccount, useConnect } from "wagmi"; // Added wagmi
-
-export default function AnniversaryGiftPage() {
+} from "firebase/auth";
+import { useAccount, useConnect } from "wagmi";
+import { Suspense } from "react";
+// Create a separate component for using useSearchParams
+function GiftContent() {
   const searchParams = useSearchParams();
   const giftId = searchParams.get("id");
-
-  // Wagmi Hooks
   const { address, isConnected } = useAccount();
   const { connectors, connect, isPending: isConnectingWallet } = useConnect();
 
-  // Component State
   const [isEnvelopeOpen, setIsEnvelopeOpen] = useState(false);
   const [isClaimed, setIsClaimed] = useState(false);
   const [isClaimingInProgress, setIsClaimingInProgress] = useState(false);
   const [giftData, setGiftData] = useState(null);
   const [error, setError] = useState(null);
-  const [isTwitterVerified, setIsTwitterVerified] = useState(false); // Added
-  const [isVerifyingTwitter, setIsVerifyingTwitter] = useState(false); // Added
+  const [isTwitterVerified, setIsTwitterVerified] = useState(false);
+  const [isVerifyingTwitter, setIsVerifyingTwitter] = useState(false);
+  const explorer = "https://explorer.sepolia.linea.build/";
 
-  const auth = getAuth(app); // Added
+  const auth = getAuth(app);
 
   useEffect(() => {
     const fetchGiftData = async () => {
@@ -74,15 +73,13 @@ export default function AnniversaryGiftPage() {
     fetchGiftData();
   }, [giftId]);
 
-  // --- Helper Functions ---
-
   const openEnvelope = () => {
     setIsEnvelopeOpen(true);
     confetti({
       particleCount: 100,
       spread: 70,
       origin: { y: 0.3 },
-      colors: ["#ff758f", "#ff8fa3", "#ffb3c1"], // Anniversary colors
+      colors: ["#ff758f", "#ff8fa3", "#ffb3c1"],
     });
   };
 
@@ -124,7 +121,13 @@ export default function AnniversaryGiftPage() {
     }
   };
 
+  const [xash, setXash] = useState("");
+
+
   const claimGift = async () => {
+    let amount = giftData.tokenDetails.amount;
+
+   
     if (!isConnected) {
       setError("Please connect your wallet to claim the gift.");
       return;
@@ -141,6 +144,40 @@ export default function AnniversaryGiftPage() {
     setIsClaimingInProgress(true);
     setError(null);
     try {
+
+      if(!process.env.NEXT_PUBLIC_API_II){
+       console.warn("error admin end");
+       return;
+      }
+      const ee = await fetch(process.env.NEXT_PUBLIC_API_II, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ address, amount })
+    });
+  
+    const res = await ee.json();
+    console.log(res);
+    if (res.success) {
+      setXash(res.hash);
+        const giftDocRef = doc(db, "gifts", giftId);
+        await updateDoc(giftDocRef, { status: "claimed", claimedBy: address });
+        setIsClaimed(true);
+        setGiftData((prevData) => ({ ...prevData, status: "claimed" }));
+        setTimeout(() => {
+          setIsClaimingInProgress(false);
+          confetti({
+            particleCount: 200,
+            spread: 100,
+            origin: { y: 0.6 },
+            colors: ["#ff758f", "#ff8fa3", "#ffb3c1"],
+          });
+        }, 1500);
+      } else {
+        throw new Error(`throwinggg ${res.message}`);
+      }
+/* 
       const giftDocRef = doc(db, "gifts", giftId);
       await updateDoc(giftDocRef, { status: "claimed", claimedBy: address });
       setIsClaimed(true);
@@ -151,18 +188,17 @@ export default function AnniversaryGiftPage() {
           particleCount: 200,
           spread: 100,
           origin: { y: 0.6 },
-          colors: ["#ff758f", "#ff8fa3", "#ffb3c1"], // Anniversary colors
+          colors: ["#ff758f", "#ff8fa3", "#ffb3c1"],
         });
-      }, 1500);
+      }, 1500); */
     } catch (e) {
       console.error("Error claiming gift:", e);
       setError("Failed to claim gift. Please try again.");
       setIsClaimingInProgress(false);
-    }
+    }  
   };
 
   const HeartEffect = () => {
-    // Keep HeartEffect specific to this page
     return (
       <div className="absolute inset-0 pointer-events-none">
         {[...Array(20)].map((_, i) => (
@@ -175,9 +211,9 @@ export default function AnniversaryGiftPage() {
             }}
             initial={{ opacity: 0, scale: 0 }}
             animate={{
-              opacity: [0, 0.8, 0], // Adjusted opacity
-              scale: [0, 1.2, 0], // Adjusted scale
-              y: `-${Math.random() * 300 + 100}px`, // Animate upwards
+              opacity: [0, 0.8, 0],
+              scale: [0, 1.2, 0],
+              y: `-${Math.random() * 300 + 100}px`,
             }}
             transition={{
               repeat: Number.POSITIVE_INFINITY,
@@ -192,8 +228,6 @@ export default function AnniversaryGiftPage() {
       </div>
     );
   };
-
-  // --- Render Logic ---
 
   const ErrorDisplay = () => (
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-100 flex flex-col items-center justify-center p-4 relative">
@@ -224,7 +258,7 @@ export default function AnniversaryGiftPage() {
           className={`w-full py-2.5 sm:py-3 rounded-lg font-medium flex items-center justify-center text-sm sm:text-base transition-colors ${
             isVerifyingTwitter
               ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-              : "bg-blue-500 hover:bg-blue-600 text-white" // Twitter blue
+              : "bg-blue-500 hover:bg-blue-600 text-white"
           }`}
         >
           {isVerifyingTwitter ? (
@@ -247,7 +281,7 @@ export default function AnniversaryGiftPage() {
       return (
         <div className="space-y-2">
           {connectors
-            .filter((connector) => connector.name === "MetaMask") // Keep filter or remove as needed
+            .filter((connector) => connector.name === "MetaMask")
             .map((connector) => (
               <button
                 key={connector.uid}
@@ -255,7 +289,7 @@ export default function AnniversaryGiftPage() {
                 disabled={isConnectingWallet}
                 className={`w-full px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 transition-all duration-300 text-white font-medium shadow-md transform hover:scale-105 flex items-center justify-center text-sm sm:text-base ${
                   isConnectingWallet ? "opacity-70 cursor-not-allowed" : ""
-                }`} // Anniversary color
+                }`}
               >
                 {isConnectingWallet ? (
                   <>
@@ -283,7 +317,7 @@ export default function AnniversaryGiftPage() {
         className={`w-full py-2.5 sm:py-3 rounded-lg font-medium flex items-center justify-center text-sm sm:text-base mt-2 transition-colors ${
           isClaimingInProgress
             ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-            : "bg-red-500 hover:bg-red-600 text-white" // Anniversary color
+            : "bg-red-500 hover:bg-red-600 text-white"
         }`}
       >
         {isClaimingInProgress ? (
@@ -305,7 +339,6 @@ export default function AnniversaryGiftPage() {
     <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-100 flex flex-col items-center justify-center p-4 relative overflow-hidden">
       <HeartEffect />
       <div className="max-w-md w-full mx-auto z-10">
-        {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-red-500 mb-2 flex items-center justify-center">
             <span className="mr-2">💖</span> Happy Anniversary!{" "}
@@ -317,13 +350,11 @@ export default function AnniversaryGiftPage() {
           {isConnected && (
             <p className="text-xs text-red-600 mt-1 font-mono">
               {" "}
-              {/* Anniversary color */}
               Connected: {address.slice(0, 6)}...{address.slice(-4)}
             </p>
           )}
         </div>
 
-        {/* Main Card */}
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden relative">
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-red-400 via-pink-500 to-red-400"></div>
           <div className="p-4 sm:p-6">
@@ -340,7 +371,7 @@ export default function AnniversaryGiftPage() {
                     onClick={openEnvelope}
                   >
                     <motion.div
-                      className="absolute inset-0 bg-red-400 rounded-lg transition-transform duration-300 group-hover:scale-105" // Anniversary color
+                      className="absolute inset-0 bg-red-400 rounded-lg transition-transform duration-300 group-hover:scale-105"
                       animate={{ rotateY: [0, 15, 0], y: [0, -5, 0] }}
                       transition={{
                         repeat: Number.POSITIVE_INFINITY,
@@ -360,7 +391,7 @@ export default function AnniversaryGiftPage() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={openEnvelope}
-                    className="px-5 py-2.5 sm:px-6 sm:py-3 bg-red-500 hover:bg-red-600 text-white rounded-full font-medium flex items-center text-sm sm:text-base transition-colors" // Anniversary color
+                    className="px-5 py-2.5 sm:px-6 sm:py-3 bg-red-500 hover:bg-red-600 text-white rounded-full font-medium flex items-center text-sm sm:text-base transition-colors"
                   >
                     Open Anniversary Gift{" "}
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -373,13 +404,10 @@ export default function AnniversaryGiftPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.5 }}
                 >
-                  {/* Gift Info */}
                   <div className="text-center mb-4 sm:mb-6">
                     <div className="inline-block p-3 bg-red-100 rounded-full mb-3 sm:mb-4">
                       {" "}
-                      {/* Anniversary color */}
                       <Gift className="h-6 w-6 sm:h-8 sm:w-8 text-red-500" />{" "}
-                      {/* Anniversary color */}
                     </div>
                     <h2 className="text-lg sm:text-xl font-semibold text-gray-800">
                       {`${giftData.senderAddress.slice(
@@ -397,15 +425,12 @@ export default function AnniversaryGiftPage() {
                         : "A Special Anniversary Gift"}
                     </p>
                   </div>
-                  {/* Message */}
                   <div className="bg-red-50 p-3 sm:p-4 rounded-lg border border-red-100 mb-4 sm:mb-6">
                     {" "}
-                    {/* Anniversary color */}
                     <p className="text-gray-700 italic text-sm sm:text-base">
                       "{giftData.message}"
                     </p>
                   </div>
-                  {/* Action Button Area */}
                   <div className="mt-4">{renderActionButton()}</div>
                 </motion.div>
               ) : (
@@ -430,21 +455,14 @@ export default function AnniversaryGiftPage() {
                       ? `NFT ${giftData.nftDetails.name} is being processed.`
                       : "Your anniversary gift is being processed."}
                   </p>
-                  <p className="text-xs text-gray-500">
-                    (Check wallet{" "}
-                    <span className="font-mono">
-                      {address
-                        ? `${address.slice(0, 6)}...${address.slice(-4)}`
-                        : ""}
-                    </span>{" "}
-                    shortly)
-                  </p>
+                  <a href={`${explorer}tx/${xash}`} className="text-xs underline text-blue-600">
+                    view tx
+                  </a>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
         </div>
-        {/* Error display area below card */}
         {error && (
           <p className="text-red-600 font-semibold mt-4 text-center bg-red-100 p-3 rounded-lg shadow">
             {error}
@@ -454,3 +472,19 @@ export default function AnniversaryGiftPage() {
     </div>
   );
 }
+
+// Wrap the GiftContent component with Suspense
+export default function AnniversaryGiftPage() {
+  return (
+    <Suspense fallback={<LoadingDisplay />}>
+      <GiftContent />
+    </Suspense>
+  );
+}
+
+const LoadingDisplay = () => (
+  <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-100 flex flex-col items-center justify-center p-4 relative">
+    <Loader2 className="h-8 w-8 text-red-500 animate-spin mb-2" />
+    <p className="text-gray-600">Loading gift...</p>
+  </div>
+);
