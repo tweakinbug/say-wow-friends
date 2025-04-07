@@ -11,6 +11,8 @@ SAY_WOW_USDC="0x072BA244Cf0DE5984dEB40030Aef86d7661303dC";
 
 <h2>How to use say WOW! to send onchain gifts:</h2>
 
+<i>Claim <a href="https://wow-faucet.vercel.app/">say Wow! mock usdc token</a> to interact / test</i>
+
 <ol>
   <li>Sign in <a href="https://say-wow.vercel.app/">say wow</a></li>
   <li>Select the type of gift you want to send.
